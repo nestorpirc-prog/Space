@@ -2,148 +2,99 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>COSMOS | ARCHIVE BY NESTOR</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NESTOR | COSMOS BEYOND</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Inter:wght@200;900&display=swap');
-        
-        body { 
-            background: #000; color: #fff; 
-            font-family: 'Inter', sans-serif; 
-            overflow-x: hidden; scroll-behavior: smooth;
+        body, html { margin: 0; padding: 0; overflow: hidden; background: #000; }
+        canvas { display: block; touch-action: none; }
+        .info {
+            position: fixed; bottom: 20px; left: 20px;
+            color: rgba(255,255,255,0.3); font-family: monospace;
+            font-size: 10px; letter-spacing: 2px; pointer-events: none;
         }
-        .header-font { font-family: 'Syncopate', sans-serif; }
-        
-        #bg-canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.6; }
-        
-        .card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .card:hover { 
-            background: #fff; color: #000; 
-            border-color: #fff; transform: scale(1.02);
-        }
-        
-        .reveal { opacity: 0; transform: translateY(50px); transition: 1.2s all ease; }
-        .reveal.active { opacity: 1; transform: translateY(0); }
-
-        .name-glitch {
-            text-shadow: 2px 0 #ff0055, -2px 0 #00fbff;
-            letter-spacing: -2px;
+        .name {
+            position: fixed; top: 40%; left: 0; width: 100%;
+            text-align: center; color: white; font-family: sans-serif;
+            font-weight: 900; font-size: 10vw; letter-spacing: -5px;
+            opacity: 0.1; pointer-events: none; text-transform: uppercase;
         }
     </style>
 </head>
 <body>
 
-    <canvas id="bg-canvas"></canvas>
-
-    <section class="h-screen flex flex-col justify-center px-6 md:px-20">
-        <div class="header-font text-[9px] tracking-[1.2em] opacity-30 mb-6 uppercase">Deep Space Exploration</div>
-        <h1 class="header-font text-7xl md:text-9xl font-black leading-none mb-8 name-glitch uppercase">
-            НЕСТОР
-        </h1>
-        <div class="flex flex-col md:flex-row md:items-center gap-8">
-            <p class="max-w-md text-sm opacity-40 font-light leading-relaxed border-l-2 border-white pl-6 uppercase tracking-widest">
-                Цифровой архив вселенной. Исследование материи, времени и бесконечности. Создано разумом для искателей истины.
-            </p>
-            <div class="h-[1px] flex-grow bg-white/10 hidden md:block"></div>
-        </div>
-        <div class="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-20 text-[9px] tracking-widest uppercase animate-pulse">
-            Листай вниз для погружения
-        </div>
-    </section>
-
-    <section class="px-6 md:px-20 py-32 space-y-32">
-        
-        <div class="reveal grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="card p-12">
-                <span class="text-[9px] opacity-30 tracking-[0.5em]">DATA_01</span>
-                <h3 class="header-font text-xl my-6 uppercase">Сингулярность</h3>
-                <p class="text-sm opacity-50 leading-loose">Центр черной дыры, где плотность становится бесконечной, а известные законы физики перестают работать. Это точка, где начинается неизвестность.</p>
-            </div>
-            <div class="card p-12">
-                <span class="text-[9px] opacity-30 tracking-[0.5em]">DATA_02</span>
-                <h3 class="header-font text-xl my-6 uppercase">Темная энергия</h3>
-                <p class="text-sm opacity-50 leading-loose">Таинственная сила, заставляющая вселенную расширяться всё быстрее. Она составляет 68% всего космоса, но мы её не видим.</p>
-            </div>
-        </div>
-
-        <div class="reveal card p-16 md:p-32 text-center border-x-0">
-            <h2 class="header-font text-4xl md:text-6xl mb-8 tracking-tighter uppercase italic">Пустота — это иллюзия</h2>
-            <p class="max-w-3xl mx-auto opacity-60 text-lg font-extralight leading-relaxed">
-                Каждый атом в твоем теле возник внутри умирающей звезды. Мы не просто наблюдаем за космосом — мы и есть космос, осознавший сам себя.
-            </p>
-        </div>
-
-        <div class="reveal grid grid-cols-1 md:grid-cols-3 gap-1">
-            <div class="card p-10 text-center">
-                <div class="header-font text-4xl font-bold mb-3 tracking-tighter">13.8</div>
-                <div class="text-[9px] opacity-30 uppercase tracking-widest">Млрд лет вселенной</div>
-            </div>
-            <div class="card p-10 text-center">
-                <div class="header-font text-4xl font-bold mb-3 tracking-tighter">300К</div>
-                <div class="text-[9px] opacity-30 uppercase tracking-widest">Км/с — скорость света</div>
-            </div>
-            <div class="card p-10 text-center">
-                <div class="header-font text-4xl font-bold mb-3 tracking-tighter">∞</div>
-                <div class="text-[9px] opacity-30 uppercase tracking-widest">Горизонт познания</div>
-            </div>
-        </div>
-
-    </section>
-
-    <footer class="p-20 text-center border-t border-white/5 opacity-30 text-[10px] tracking-[1em] uppercase">
-        Project by Nestor | Sector 2026
-    </footer>
+    <div class="name">NESTOR</div>
+    <div class="info">УПРАВЛЯЙ ВСЕЛЕННОЙ КАСАНИЕМ</div>
+    <canvas id="canvas"></canvas>
 
     <script>
-        // Космический фон (медленное движение)
-        const canvas = document.getElementById('bg-canvas');
+        const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        let w, h, stars = [];
 
-        function resize() {
-            w = canvas.width = window.innerWidth;
-            h = canvas.height = window.innerHeight;
-        }
+        let width, height, particles = [];
+        const particleCount = 600; // Количество звезд
+        const mouse = { x: -1000, y: -1000, active: false };
 
-        function createStars() {
-            stars = Array.from({length: 250}, () => ({
-                x: Math.random() * w, 
-                y: Math.random() * h,
-                r: Math.random() * 1.2, 
-                o: Math.random() * 0.8
-            }));
+        function init() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            particles = [];
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    baseX: Math.random() * width,
+                    baseY: Math.random() * height,
+                    size: Math.random() * 2 + 1,
+                    speed: Math.random() * 0.5 + 0.1,
+                    color: `rgba(255, 255, 255, ${Math.random() * 0.8 + 0.2})`
+                });
+            }
         }
 
         function draw() {
-            ctx.clearRect(0, 0, w, h);
-            ctx.fillStyle = "white";
-            stars.forEach(s => {
-                ctx.globalAlpha = s.o;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; // Эффект шлейфа
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach(p => {
+                // Движение звезд
+                p.y -= p.speed;
+                if (p.y < 0) p.y = height;
+
+                // Взаимодействие с мышкой/пальцем
+                let dx = mouse.x - p.x;
+                let dy = mouse.y - p.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 150) {
+                    let force = (150 - distance) / 150;
+                    let dirX = dx / distance;
+                    let dirY = dy / distance;
+                    p.x -= dirX * force * 10;
+                    p.y -= dirY * force * 10;
+                }
+
+                ctx.fillStyle = p.color;
                 ctx.beginPath();
-                ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
                 ctx.fill();
-                s.y -= 0.15;
-                if(s.y < 0) s.y = h;
             });
+
             requestAnimationFrame(draw);
         }
 
-        // Анимация при скролле
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) entry.target.classList.add('active');
-            });
-        }, { threshold: 0.1 });
+        const updateMouse = (e) => {
+            mouse.x = e.touches ? e.touches[0].clientX : e.clientX;
+            mouse.y = e.touches ? e.touches[0].clientY : e.clientY;
+        };
 
-        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        window.addEventListener('mousemove', updateMouse);
+        window.addEventListener('touchmove', updateMouse);
+        window.addEventListener('mousedown', () => mouse.active = true);
+        window.addEventListener('mouseup', () => { mouse.x = -1000; mouse.y = -1000; });
 
-        window.onresize = resize;
-        resize(); createStars(); draw();
+        window.onresize = init;
+        init();
+        draw();
     </script>
 </body>
 </html>
