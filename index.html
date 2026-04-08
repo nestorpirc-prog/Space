@@ -3,48 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NESTOR: PLANET EATER PRO</title>
+    <title>NESTOR: PLANET EATER ULTIMATE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
-        body { margin: 0; background: #020205; color: #fff; font-family: 'JetBrains Mono', monospace; overflow: hidden; touch-action: none; }
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&display=swap');
+        body { margin: 0; background: #000; color: #fff; font-family: 'JetBrains Mono', monospace; overflow: hidden; touch-action: none; }
         canvas { display: block; }
-        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .ui-top { position: fixed; top: 0; left: 0; width: 100%; padding: 20px; pointer-events: none; z-index: 10; }
-        .ui-bottom { position: fixed; bottom: 0; left: 0; width: 100%; padding: 20px; z-index: 10; display: flex; gap: 10px; }
+        .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); }
         .btn { 
-            pointer-events: auto; padding: 12px; flex: 1; border-radius: 4px;
-            font-size: 10px; font-weight: 800; text-transform: uppercase; transition: 0.2s;
+            pointer-events: auto; padding: 10px 5px; flex: 1; border-radius: 2px;
+            font-size: 9px; font-weight: 800; text-transform: uppercase; transition: 0.1s;
+            border: 1px solid rgba(255,255,255,0.2);
         }
-        .btn-active { background: #fff; color: #000; }
-        .btn-active:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,255,255,0.2); }
-        .btn:disabled { opacity: 0.2; filter: grayscale(1); }
-        .stat-val { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
+        .btn:active { transform: scale(0.95); background: #fff; color: #000; }
+        .btn:disabled { opacity: 0.1; }
     </style>
 </head>
 <body>
 
-    <div class="ui-top flex justify-between">
-        <div class="glass p-3 rounded">
-            <div class="text-[8px] opacity-50 uppercase tracking-widest">Кредиты</div>
-            <div class="text-xl font-black stat-val">$<span id="money">0</span></div>
+    <div class="fixed top-0 left-0 w-full p-4 flex justify-between pointer-events-none z-10">
+        <div class="glass p-2">
+            <div class="text-[7px] opacity-50 uppercase leading-none mb-1">Кредиты</div>
+            <div class="text-xl font-black text-green-400">$<span id="money">0</span></div>
         </div>
-        <div class="glass p-3 rounded text-right">
-            <div class="text-[8px] opacity-50 uppercase tracking-widest">Урон</div>
-            <div class="text-xl font-black text-blue-400">x<span id="dmgMult">1</span></div>
-        </div>
-    </div>
-
-    <div class="fixed top-[20%] w-full text-center pointer-events-none">
-        <div id="planetName" class="text-4xl font-black uppercase tracking-tighter mb-2 italic">МЕРКУРИЙ</div>
-        <div class="w-64 h-1.5 bg-white/10 mx-auto rounded-full overflow-hidden">
-            <div id="hpBar" class="h-full bg-gradient-to-r from-red-600 to-orange-500 transition-all duration-75" style="width: 100%"></div>
+        <div class="glass p-2 text-right">
+            <div id="planetName" class="text-sm font-black italic tracking-tighter uppercase leading-none mb-1">МЕРКУРИЙ</div>
+            <div class="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
+                <div id="hpBar" class="h-full bg-white transition-all duration-75" style="width: 100%"></div>
+            </div>
         </div>
     </div>
 
-    <div class="ui-bottom">
-        <button id="buyUnit" class="btn btn-active">➕ Жнец ($<span id="unitCost">50</span>)</button>
-        <button id="buyDmg" class="btn btn-active">🔥 Сила ($<span id="dmgCost">100</span>)</button>
+    <div class="fixed bottom-0 left-0 w-full p-4 z-10 flex gap-2">
+        <button id="buyUnit" class="btn">➕ Жнец ($<span id="uCost">50</span>)</button>
+        <button id="buyDmg" class="btn">🔥 Сила ($<span id="dCost">100</span>)</button>
+        <button id="buySpd" class="btn">⚡ Скорость ($<span id="sCost">150</span>)</button>
     </div>
 
     <canvas id="c"></canvas>
@@ -53,90 +46,92 @@
         const canvas = document.getElementById('c');
         const ctx = canvas.getContext('2d');
         
-        let w, h, money = 0, damageLevel = 1, units = [], particles = [];
+        let w, h, money = 0, units = [], particles = [];
+        let dmgLvl = 1, spdLvl = 1;
         let mouse = { x: -1000, y: -1000 };
         
         const planets = [
-            { name: "Меркурий", hp: 150, mhp: 150, sz: 45, col: "#A5A5A5", reward: 200 },
-            { name: "Венера", hp: 500, mhp: 500, sz: 70, col: "#E3BB76", reward: 600 },
-            { name: "Земля", hp: 1200, mhp: 1200, sz: 75, col: "#2D5DA1", reward: 1500 },
-            { name: "Марс", hp: 2500, mhp: 2500, sz: 65, col: "#C1440E", reward: 3500 },
-            { name: "Юпитер", hp: 8000, mhp: 8000, sz: 110, col: "#D39C7E", reward: 10000 }
+            { name: "Меркурий", hp: 150, mhp: 150, sz: 50, col: "#888", rwd: 300 },
+            { name: "Венера", hp: 600, mhp: 600, sz: 70, col: "#E3BB76", rwd: 800 },
+            { name: "Земля", hp: 1500, mhp: 1500, sz: 80, col: "#2D5DA1", rwd: 2000 },
+            { name: "Марс", hp: 3500, mhp: 3500, sz: 65, col: "#C1440E", rwd: 5000 },
+            { name: "Юпитер", hp: 10000, mhp: 10000, sz: 120, col: "#D39C7E", rwd: 15000 }
         ];
         
-        let pIdx = 0;
-        let uCost = 50, dCost = 100;
+        let pIdx = 0, uC = 50, dC = 100, sC = 150;
 
         function init() {
             w = canvas.width = window.innerWidth;
             h = canvas.height = window.innerHeight;
-            if(units.length === 0) units.push(new Unit());
+            if(!units.length) units.push(new Unit());
         }
 
         class Unit {
             constructor() {
                 this.x = Math.random()*w; this.y = Math.random()*h;
-                this.vx = 0; this.vy = 0; this.r = 2.5;
+                this.vx = 0; this.vy = 0;
             }
             update() {
-                let dx = mouse.x - this.x; let dy = mouse.y - this.y;
+                let dx = mouse.x - this.x, dy = mouse.y - this.y;
                 let d = Math.hypot(dx, dy);
-                if(d > 5) { this.vx += dx/d * 0.6; this.vy += dy/d * 0.6; }
+                let speedBase = 0.5 + (spdLvl * 0.1);
+                
+                if(d > 5) {
+                    this.vx += dx/d * speedBase;
+                    this.vy += dy/d * speedBase;
+                }
                 this.x += this.vx; this.y += this.vy;
-                this.vx *= 0.94; this.vy *= 0.94;
+                this.vx *= 0.93; this.vy *= 0.93;
 
                 let pl = planets[pIdx];
-                let pdx = w/2 - this.x; let pdy = h/2 - this.y;
+                let pdx = w/2 - this.x, pdy = h/2 - this.y;
                 let pd = Math.hypot(pdx, pdy);
 
                 if(pd < pl.sz) {
-                    let dmg = 1 * damageLevel;
-                    pl.hp -= dmg;
-                    money += 1; // Деньги за каждый "кусь"
+                    pl.hp -= dmgLvl;
+                    money += (1 + (dmgLvl * 0.1));
+                    this.vx = -pdx/pd * 10; this.vy = -pdy/pd * 10;
+                    if(particles.length < 50) spawnP(this.x, this.y, pl.col);
                     updateUI();
-                    this.vx = -pdx/pd * 12; this.vy = -pdy/pd * 12;
-                    spawnP(this.x, this.y, pl.col);
                 }
             }
             draw() {
                 ctx.fillStyle = "#fff";
-                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
+                ctx.fillRect(this.x-1, this.y-1, 3, 3);
             }
         }
 
         function spawnP(x, y, col) {
-            for(let i=0; i<2; i++) {
-                particles.push({x, y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, l:1, c:col});
-            }
+            particles.push({x, y, vx:(Math.random()-0.5)*8, vy:(Math.random()-0.5)*8, l:1, c:col});
         }
 
         function updateUI() {
             document.getElementById('money').innerText = Math.floor(money);
             document.getElementById('hpBar').style.width = (planets[pIdx].hp / planets[pIdx].mhp * 100) + "%";
-            document.getElementById('unitCost').innerText = uCost;
-            document.getElementById('dmgCost').innerText = dCost;
-            document.getElementById('dmgMult').innerText = damageLevel;
+            document.getElementById('uCost').innerText = uC;
+            document.getElementById('dCost').innerText = dC;
+            document.getElementById('sCost').innerText = sC;
             
-            document.getElementById('buyUnit').disabled = money < uCost;
-            document.getElementById('buyDmg').disabled = money < dCost;
+            document.getElementById('buyUnit').disabled = money < uC;
+            document.getElementById('buyDmg').disabled = money < dC;
+            document.getElementById('buySpd').disabled = money < sC;
         }
 
         function draw() {
-            ctx.fillStyle = "rgba(2, 2, 5, 0.3)";
+            ctx.fillStyle = "rgba(0,0,0,0.2)"; // Хвосты без лагов
             ctx.fillRect(0,0,w,h);
             
             let p = planets[pIdx];
             
-            // Планета
-            ctx.save();
-            ctx.shadowBlur = 40; ctx.shadowColor = p.col;
-            ctx.fillStyle = p.col;
+            // Планета (Градиент вместо теней для скорости)
+            let grad = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, p.sz);
+            grad.addColorStop(0, p.col);
+            grad.addColorStop(1, '#000');
+            ctx.fillStyle = grad;
             ctx.beginPath(); ctx.arc(w/2, h/2, p.sz, 0, Math.PI*2); ctx.fill();
-            ctx.restore();
 
-            // Проверка смерти планеты
             if(p.hp <= 0) {
-                money += p.reward;
+                money += p.rwd;
                 pIdx = (pIdx + 1) % planets.length;
                 planets[pIdx].hp = planets[pIdx].mhp;
                 document.getElementById('planetName').innerText = planets[pIdx].name;
@@ -144,36 +139,30 @@
             }
 
             units.forEach(u => { u.update(); u.draw(); });
+            
             particles.forEach((p, i) => {
-                p.x += p.vx; p.y += p.vy; p.l -= 0.03;
+                p.x += p.vx; p.y += p.vy; p.l -= 0.05;
                 if(p.l <= 0) particles.splice(i,1);
-                ctx.fillStyle = p.c; ctx.globalAlpha = p.l;
-                ctx.fillRect(p.x, p.y, 2, 2);
+                ctx.fillStyle = p.c;
+                ctx.fillRect(p.x, p.y, 1.5, 1.5);
             });
-            ctx.globalAlpha = 1;
+
             requestAnimationFrame(draw);
         }
 
         document.getElementById('buyUnit').onclick = () => {
-            if(money >= uCost) {
-                money -= uCost;
-                units.push(new Unit());
-                uCost = Math.floor(uCost * 1.6);
-                updateUI();
-            }
+            if(money >= uC) { money -= uC; units.push(new Unit()); uC = Math.floor(uC * 1.5); updateUI(); }
         };
-
         document.getElementById('buyDmg').onclick = () => {
-            if(money >= dCost) {
-                money -= dCost;
-                damageLevel++;
-                dCost = Math.floor(dCost * 2.2);
-                updateUI();
-            }
+            if(money >= dC) { money -= dC; dmgLvl += 2; dC = Math.floor(dC * 2); updateUI(); }
+        };
+        document.getElementById('buySpd').onclick = () => {
+            if(money >= sC) { money -= sC; spdLvl += 1; sC = Math.floor(sC * 1.8); updateUI(); }
         };
 
-        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
-        window.addEventListener('touchmove', e => { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; });
+        const setM = e => { mouse.x = e.touches ? e.touches[0].clientX : e.clientX; mouse.y = e.touches ? e.touches[0].clientY : e.clientY; };
+        window.addEventListener('mousemove', setM);
+        window.addEventListener('touchmove', setM);
         window.onresize = init;
         init(); updateUI(); draw();
     </script>
