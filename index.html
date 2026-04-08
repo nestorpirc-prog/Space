@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>КОСМИЧЕСКИЙ ТЕРМИНАЛ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;700&display=swap');
+        
+        body, html { 
+            margin: 0; padding: 0; overflow: hidden; 
+            background: #020205; 
+            font-family: 'Roboto Mono', monospace; 
+            color: #ffffff;
+        }
+        canvas { display: block; touch-action: none; }
+        
+        .ui-panel {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+        }
+
+        /* Эффект старого монитора */
+        .crt::after {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 15; background-size: 100% 3px, 3px 100%; pointer-events: none;
+        }
+    </style>
+</head>
+<body class="crt">
+
+    <div class="fixed top-0 left-0 w-full p-6 flex justify-between items-start pointer-events-none z-10">
+        <div class="ui-panel p-4 rounded-sm">
+            <div class="text-[10px] opacity-40 mb-1 tracking-widest">Система: Активна</div>
+            <div class="text-lg font-bold">СЕКТОР_001</div>
+        </div>
+        <div class="ui-panel p-4 rounded-sm text-right">
+            <div class="text-[10px] opacity-40 mb-1 tracking-widest">Собрано данных</div>
+            <div class="text-3xl font-bold text-white" id="score">0000</div>
+        </div>
+    </div>
+
+    <div id="game-over" class="fixed inset-0 bg-black/90 flex flex-col items-center justify-center hidden z-20">
+        <div class="border border-white/20 p-10 text-center">
+            <h2 class="text-4xl font-bold mb-4 tracking-tighter">СВЯЗЬ ПРЕРВАНА</h2>
+            <p class="mb-8 text-sm opacity-50 uppercase tracking-widest">Критическое повреждение модуля</p>
+            <button onclick="location.reload()" class="border border-white px-8 py-3 hover:bg-white hover:text-black transition-all uppercase text-xs font-bold">
+                Перезагрузить систему
+            </button>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const gameOverEl = document.getElementById('game-over');
+
+        let width, height, score = 0, gameActive = true;
+        let items = [], player = { x: 0, y: 0, r: 18 };
+
+        function init() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            player.x = width / 2;
+            player.y = height / 2;
+        }
+
+        const handleMove = (e) => {
+            const x = e.touches ? e.touches[0].clientX : e.clientX;
+            const y = e.touches ? e.touches[0].clientY : e.clientY;
+            player.x += (x - player.x) * 0.2; 
+            player.y += (y - player.y) * 0.2;
+        };
+        window.addEventListener('mousemove', handleMove);
+        window.addEventListener('touchmove', handleMove);
+
+        function createItem() {
+            if (!gameActive) return;
+            const isDanger = Math.random() > 0.4;
+            items.push({
+                x: Math.random() * width,
+                y: -40,
+                speed: 3 + Math.random() * 3 + (score/200),
+                size: isDanger ? 20 : 6,
+                type: isDanger ? 'DANGER' : 'DATA'
+            });
+            setTimeout(createItem, Math.max(150, 500 - (score/10)));
+        }
+
+        function update() {
+            if (!gameActive) return;
+            ctx.fillStyle = '#020205';
+            ctx.fillRect(0, 0, width, height);
+
+            // Отрисовка игрока
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
+            ctx.stroke();
+            
+            // Курсор внутри игрока
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(player.x - 2, player.y - 2, 4, 4);
+
+            items.forEach((item, i) => {
+                item.y += item.speed;
+                
+                if (item.type === 'DANGER') {
+                    ctx.strokeStyle = '#ff3333';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(item.x - item.size/2, item.y - item.size/2, item.size, item.size);
+                } else {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.size, 0, Math.PI*2);
+                    ctx.fill();
+                }
+
+                // Коллизия
+                const dist = Math.hypot(item.x - player.x, item.y - player.y);
+                if (dist < item.size + player.r) {
+                    if (item.type === 'DANGER') {
+                        gameActive = false;
+                        gameOverEl.classList.remove('hidden');
+                    } else {
+                        items.splice(i, 1);
+                        score += 100;
+                        scoreEl.innerText = score.toString().padStart(4, '0');
+                    }
+                }
+
+                if (item.y > height + 50) items.splice(i, 1);
+            });
+
+            requestAnimationFrame(update);
+        }
+
+        window.onresize = init;
+        init();
+        createItem();
+        update();
+    </script>
+</body>
+</html>
