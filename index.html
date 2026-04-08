@@ -3,41 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NESTOR: PLANET EATER ULTIMATE</title>
+    <title>NESTOR: GALACTIC OVERLORD</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&display=swap');
         body { margin: 0; background: #000; color: #fff; font-family: 'JetBrains Mono', monospace; overflow: hidden; touch-action: none; }
         canvas { display: block; }
-        .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); }
         .btn { 
-            pointer-events: auto; padding: 10px 5px; flex: 1; border-radius: 2px;
-            font-size: 9px; font-weight: 800; text-transform: uppercase; transition: 0.1s;
-            border: 1px solid rgba(255,255,255,0.2);
+            pointer-events: auto; padding: 12px 4px; flex: 1; border-radius: 4px;
+            font-size: 8px; font-weight: 800; text-transform: uppercase; transition: 0.1s;
+            border-bottom: 3px solid rgba(255,255,255,0.2);
         }
-        .btn:active { transform: scale(0.95); background: #fff; color: #000; }
-        .btn:disabled { opacity: 0.1; }
+        .btn:active { transform: translateY(2px); border-bottom-width: 1px; }
+        .btn:disabled { opacity: 0.1; filter: grayscale(1); }
+        #money { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
     </style>
 </head>
 <body>
 
     <div class="fixed top-0 left-0 w-full p-4 flex justify-between pointer-events-none z-10">
-        <div class="glass p-2">
-            <div class="text-[7px] opacity-50 uppercase leading-none mb-1">Кредиты</div>
-            <div class="text-xl font-black text-green-400">$<span id="money">0</span></div>
+        <div class="glass p-3 rounded-lg">
+            <div class="text-[8px] opacity-40 uppercase mb-1">Ресурсы</div>
+            <div class="text-xl font-black font-mono tracking-tighter leading-none">$<span id="money">0</span></div>
         </div>
-        <div class="glass p-2 text-right">
-            <div id="planetName" class="text-sm font-black italic tracking-tighter uppercase leading-none mb-1">МЕРКУРИЙ</div>
-            <div class="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
-                <div id="hpBar" class="h-full bg-white transition-all duration-75" style="width: 100%"></div>
+        <div class="glass p-3 rounded-lg text-right min-w-[120px]">
+            <div id="planetName" class="text-xs font-black italic uppercase mb-2">Меркурий</div>
+            <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div id="hpBar" class="h-full bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 transition-all duration-75" style="width: 100%"></div>
             </div>
         </div>
     </div>
 
     <div class="fixed bottom-0 left-0 w-full p-4 z-10 flex gap-2">
-        <button id="buyUnit" class="btn">➕ Жнец ($<span id="uCost">50</span>)</button>
-        <button id="buyDmg" class="btn">🔥 Сила ($<span id="dCost">100</span>)</button>
-        <button id="buySpd" class="btn">⚡ Скорость ($<span id="sCost">150</span>)</button>
+        <button id="buyUnit" class="btn glass text-white">➕ Рій ($<span id="uCost">50</span>)</button>
+        <button id="buyDmg" class="btn glass text-white">🔥 Урон ($<span id="dCost">100</span>)</button>
+        <button id="buySpd" class="btn glass text-white">⚡ Грав ($<span id="sCost">150</span>)</button>
     </div>
 
     <canvas id="c"></canvas>
@@ -51,11 +52,16 @@
         let mouse = { x: -1000, y: -1000 };
         
         const planets = [
-            { name: "Меркурий", hp: 150, mhp: 150, sz: 50, col: "#888", rwd: 300 },
-            { name: "Венера", hp: 600, mhp: 600, sz: 70, col: "#E3BB76", rwd: 800 },
-            { name: "Земля", hp: 1500, mhp: 1500, sz: 80, col: "#2D5DA1", rwd: 2000 },
-            { name: "Марс", hp: 3500, mhp: 3500, sz: 65, col: "#C1440E", rwd: 5000 },
-            { name: "Юпитер", hp: 10000, mhp: 10000, sz: 120, col: "#D39C7E", rwd: 15000 }
+            { n: "Меркурий", hp: 150, m: 150, sz: 35, c: "#888", r: 500 },
+            { n: "Венера", hp: 600, m: 600, sz: 55, c: "#E3BB76", r: 1500 },
+            { n: "Земля", hp: 2000, m: 2000, sz: 60, c: "#2D5DA1", r: 4000 },
+            { n: "Марс", hp: 5000, m: 5000, sz: 50, c: "#C1440E", r: 8000 },
+            { n: "Юпитер", hp: 15000, m: 15000, sz: 100, c: "#D39C7E", r: 25000 },
+            { n: "Сатурн", hp: 30000, m: 30000, sz: 85, c: "#C5AB6E", r: 60000, ring: true },
+            { n: "Уран", hp: 70000, m: 70000, sz: 70, c: "#B5E3E3", r: 150000 },
+            { n: "Нептун", hp: 150000, m: 150000, sz: 68, c: "#4B70DD", r: 350000 },
+            { n: "Плутон", hp: 400000, m: 400000, sz: 30, c: "#FFF", r: 1000000 },
+            { n: "СОЛНЦЕ", hp: 2000000, m: 2000000, sz: 140, c: "#FFCC00", r: 9999999, boss: true }
         ];
         
         let pIdx = 0, uC = 50, dC = 100, sC = 150;
@@ -74,91 +80,98 @@
             update() {
                 let dx = mouse.x - this.x, dy = mouse.y - this.y;
                 let d = Math.hypot(dx, dy);
-                let speedBase = 0.5 + (spdLvl * 0.1);
                 
+                // Физика гравитации (притяжение к пальцу)
                 if(d > 5) {
-                    this.vx += dx/d * speedBase;
-                    this.vy += dy/d * speedBase;
+                    let force = Math.min(d, 200) / 200;
+                    this.vx += (dx/d) * (0.4 + spdLvl*0.1) * force;
+                    this.vy += (dy/d) * (0.4 + spdLvl*0.1) * force;
                 }
+                
                 this.x += this.vx; this.y += this.vy;
-                this.vx *= 0.93; this.vy *= 0.93;
+                this.vx *= 0.96; this.vy *= 0.96; // Трение космоса
 
                 let pl = planets[pIdx];
                 let pdx = w/2 - this.x, pdy = h/2 - this.y;
                 let pd = Math.hypot(pdx, pdy);
 
                 if(pd < pl.sz) {
-                    pl.hp -= dmgLvl;
-                    money += (1 + (dmgLvl * 0.1));
+                    // Урон зависит от скорости (Физика!)
+                    let speedImpact = Math.hypot(this.vx, this.vy);
+                    let finalDmg = dmgLvl * (1 + speedImpact * 0.2);
+                    
+                    pl.hp -= finalDmg;
+                    money += (finalDmg * 0.1);
+                    
                     this.vx = -pdx/pd * 10; this.vy = -pdy/pd * 10;
-                    if(particles.length < 50) spawnP(this.x, this.y, pl.col);
+                    if(particles.length < 40) spawnP(this.x, this.y, pl.c);
                     updateUI();
                 }
             }
             draw() {
                 ctx.fillStyle = "#fff";
-                ctx.fillRect(this.x-1, this.y-1, 3, 3);
+                ctx.fillRect(this.x-1, this.y-1, 2.5, 2.5);
             }
         }
 
         function spawnP(x, y, col) {
-            particles.push({x, y, vx:(Math.random()-0.5)*8, vy:(Math.random()-0.5)*8, l:1, c:col});
+            particles.push({x, y, vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10, l:1, c:col});
         }
 
         function updateUI() {
             document.getElementById('money').innerText = Math.floor(money);
-            document.getElementById('hpBar').style.width = (planets[pIdx].hp / planets[pIdx].mhp * 100) + "%";
+            document.getElementById('hpBar').style.width = (planets[pIdx].hp / planets[pIdx].m * 100) + "%";
             document.getElementById('uCost').innerText = uC;
             document.getElementById('dCost').innerText = dC;
             document.getElementById('sCost').innerText = sC;
-            
             document.getElementById('buyUnit').disabled = money < uC;
             document.getElementById('buyDmg').disabled = money < dC;
             document.getElementById('buySpd').disabled = money < sC;
         }
 
         function draw() {
-            ctx.fillStyle = "rgba(0,0,0,0.2)"; // Хвосты без лагов
+            ctx.fillStyle = "rgba(0,0,0,0.3)";
             ctx.fillRect(0,0,w,h);
             
             let p = planets[pIdx];
             
-            // Планета (Градиент вместо теней для скорости)
-            let grad = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, p.sz);
-            grad.addColorStop(0, p.col);
-            grad.addColorStop(1, '#000');
-            ctx.fillStyle = grad;
+            // Сатурн: кольца
+            if(p.ring) {
+                ctx.strokeStyle = "rgba(197, 171, 110, 0.4)";
+                ctx.lineWidth = 15;
+                ctx.beginPath();
+                ctx.ellipse(w/2, h/2, p.sz*2, p.sz*0.6, Math.PI/6, 0, Math.PI*2);
+                ctx.stroke();
+            }
+
+            // Планета
+            let g = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, p.sz);
+            g.addColorStop(0, p.c);
+            g.addColorStop(1, "#000");
+            ctx.fillStyle = g;
             ctx.beginPath(); ctx.arc(w/2, h/2, p.sz, 0, Math.PI*2); ctx.fill();
 
             if(p.hp <= 0) {
-                money += p.rwd;
+                money += p.r;
                 pIdx = (pIdx + 1) % planets.length;
-                planets[pIdx].hp = planets[pIdx].mhp;
-                document.getElementById('planetName').innerText = planets[pIdx].name;
+                planets[pIdx].hp = planets[pIdx].m;
+                document.getElementById('planetName').innerText = planets[pIdx].n;
                 updateUI();
             }
 
             units.forEach(u => { u.update(); u.draw(); });
-            
             particles.forEach((p, i) => {
-                p.x += p.vx; p.y += p.vy; p.l -= 0.05;
+                p.x += p.vx; p.y += p.vy; p.l -= 0.04;
                 if(p.l <= 0) particles.splice(i,1);
-                ctx.fillStyle = p.c;
-                ctx.fillRect(p.x, p.y, 1.5, 1.5);
+                ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 1.5, 1.5);
             });
 
             requestAnimationFrame(draw);
         }
 
-        document.getElementById('buyUnit').onclick = () => {
-            if(money >= uC) { money -= uC; units.push(new Unit()); uC = Math.floor(uC * 1.5); updateUI(); }
-        };
-        document.getElementById('buyDmg').onclick = () => {
-            if(money >= dC) { money -= dC; dmgLvl += 2; dC = Math.floor(dC * 2); updateUI(); }
-        };
-        document.getElementById('buySpd').onclick = () => {
-            if(money >= sC) { money -= sC; spdLvl += 1; sC = Math.floor(sC * 1.8); updateUI(); }
-        };
+        document.getElementById('buyUnit').onclick = () => { if(money >= uC){ money -= uC; units.push(new Unit(), new Unit()); uC = Math.floor(uC * 1.8); updateUI(); } };
+        document.getElementById('buyDmg').onclick = () => { if(money >= dC){ money -= dC; dmgLvl += 5; dC = Math.floor(dC * 2.5); updateUI(); } };
+        document.getElementById('buySpd').onclick = () => { if(money >= sC){ money -= sC; spdLvl += 1; sC = Math.floor(sC * 2); updateUI(); } };
 
         const setM = e => { mouse.x = e.touches ? e.touches[0].clientX : e.clientX; mouse.y = e.touches ? e.touches[0].clientY : e.clientY; };
         window.addEventListener('mousemove', setM);
