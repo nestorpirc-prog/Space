@@ -3,148 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NESTOR | QUANTUM STORM</title>
+    <title>NESTOR: PLANET EATER</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; background: #000; cursor: none; }
-        canvas { display: block; touch-action: none; }
-        .hud {
-            position: fixed; top: 20px; right: 20px;
-            color: rgba(255, 255, 255, 0.15); font-family: monospace;
-            font-size: 10px; pointer-events: none; text-transform: uppercase; text-align: right;
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+        body { margin: 0; background: #000; color: #fff; font-family: 'Orbitron', sans-serif; overflow: hidden; touch-action: none; }
+        canvas { display: block; }
+        .ui { position: fixed; z-index: 10; pointer-events: none; width: 100%; padding: 20px; box-sizing: border-box; }
+        .shop-btn { 
+            pointer-events: auto; background: rgba(255,255,255,0.1); 
+            border: 1px solid #fff; padding: 10px 20px; cursor: pointer;
+            transition: 0.3s; font-size: 12px;
         }
-        .name {
-            position: fixed; bottom: 40px; left: 40px;
-            color: white; font-family: sans-serif;
-            font-weight: 900; font-size: 8vw; letter-spacing: -3px;
-            opacity: 0.05; pointer-events: none; text-transform: uppercase;
-        }
+        .shop-btn:hover { background: #fff; color: #000; }
+        .shop-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .planet-info { text-align: center; width: 100%; top: 20%; position: fixed; }
     </style>
 </head>
 <body>
 
-    <div class="name">NESTOR</div>
-    <div class="hud">
-        Quantum Storm | Активно: 400<br>
-        Тап: Взрыв / Движение: Искажение
+    <div class="ui flex justify-between items-start">
+        <div>
+            <div class="text-[10px] opacity-50 uppercase">Баланс</div>
+            <div class="text-2xl font-black text-yellow-400">$<span id="money">0</span></div>
+        </div>
+        <button id="buyBtn" class="shop-btn">КУПИТЬ ЖНЕЦА ($50)</button>
     </div>
+
+    <div class="planet-info">
+        <div id="planetName" class="text-3xl font-black tracking-[0.3em] uppercase mb-2">Меркурий</div>
+        <div class="w-48 h-1 bg-white/20 mx-auto overflow-hidden">
+            <div id="hpBar" class="h-full bg-red-600 transition-all duration-100" style="width: 100%"></div>
+        </div>
+    </div>
+
     <canvas id="c"></canvas>
 
     <script>
         const canvas = document.getElementById('c');
         const ctx = canvas.getContext('2d');
+        const moneyEl = document.getElementById('money');
+        const buyBtn = document.getElementById('buyBtn');
+        const hpBar = document.getElementById('hpBar');
+        const planetNameEl = document.getElementById('planetName');
 
-        let width, height, particles = [];
-        const particleCount = 400; // Оптимальное количество для производительности
-        const mouse = { x: -1000, y: -1000, down: false };
+        let w, h, money = 0, units = [], particles = [];
+        let mouse = { x: -1000, y: -1000 };
+        
+        const planets = [
+            { name: "Меркурий", hp: 100, maxHp: 100, size: 40, color: "#888", reward: 150 },
+            { name: "Венера", hp: 300, maxHp: 300, size: 60, color: "#e3bb76", reward: 400 },
+            { name: "Земля", hp: 800, maxHp: 800, size: 65, color: "#2271b3", reward: 1000 },
+            { name: "Марс", hp: 1500, maxHp: 1500, size: 55, color: "#e27b58", reward: 2500 },
+            { name: "Юпитер", hp: 5000, maxHp: 5000, size: 100, color: "#d39c7e", reward: 7000 }
+        ];
+        let currentPlanetIdx = 0;
+        let unitCost = 50;
 
         function init() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-            particles = [];
-            for (let i = 0; i < particleCount; i++) {
+            w = canvas.width = window.innerWidth;
+            h = canvas.height = window.innerHeight;
+        }
+
+        class Unit {
+            constructor() {
+                this.x = Math.random() * w;
+                this.y = Math.random() * h;
+                this.vx = 0; this.vy = 0;
+                this.r = 3;
+            }
+            update() {
+                // Тяга к пальцу
+                let dx = mouse.x - this.x;
+                let dy = mouse.y - this.y;
+                let dist = Math.hypot(dx, dy);
+                if(dist > 5) {
+                    this.vx += dx / dist * 0.5;
+                    this.vy += dy / dist * 0.5;
+                }
+                
+                this.x += this.vx; this.y += this.vy;
+                this.vx *= 0.95; this.vy *= 0.95;
+
+                // Проверка столкновения с планетой
+                let pdx = w/2 - this.x;
+                let pdy = h/2 - this.y;
+                let pDist = Math.hypot(pdx, pdy);
+                let planet = planets[currentPlanetIdx];
+
+                if(pDist < planet.size) {
+                    planet.hp -= 1;
+                    this.vx = -pdx / pDist * 10; // Отскок
+                    this.vy = -pdy / pDist * 10;
+                    createParticles(this.x, this.y, planet.color);
+                }
+            }
+            draw() {
+                ctx.fillStyle = "#fff";
+                ctx.shadowBlur = 10; ctx.shadowColor = "#fff";
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function createParticles(x, y, col) {
+            for(let i=0; i<3; i++) {
                 particles.push({
-                    x: Math.random() * width,
-                    y: Math.random() * height,
-                    vx: (Math.random() - 0.5) * 1, // Медленнее, для плавности
-                    vy: (Math.random() - 0.5) * 1,
-                    size: Math.random() * 2 + 1,
-                    hue: 180 + Math.random() * 60 // Бирюзово-фиолетовые тона
+                    x, y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5,
+                    life: 1, col: col
                 });
             }
         }
 
         function draw() {
-            // Фон с плавным затуханием (Эффект шлейфа)
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-            ctx.fillRect(0, 0, width, height);
+            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.fillRect(0,0,w,h);
+            
+            let planet = planets[currentPlanetIdx];
 
-            // Оптимизация: используем эффект свечения через "Композицию"
-            ctx.globalCompositeOperation = 'lighter'; // Смешивает цвета, добавляя свет
+            // Отрисовка планеты
+            ctx.fillStyle = planet.color;
+            ctx.shadowBlur = 20; ctx.shadowColor = planet.color;
+            ctx.beginPath(); ctx.arc(w/2, h/2, planet.size, 0, Math.PI*2); ctx.fill();
+            ctx.shadowBlur = 0;
 
-            particles.forEach(p => {
-                // Движение
-                p.x += p.vx;
-                p.y += p.vy;
+            // Логика HP
+            hpBar.style.width = (planet.hp / planet.maxHp * 100) + "%";
+            if(planet.hp <= 0) {
+                money += planet.reward;
+                moneyEl.innerText = money;
+                currentPlanetIdx = (currentPlanetIdx + 1) % planets.length;
+                planets[currentPlanetIdx].hp = planets[currentPlanetIdx].maxHp;
+                planetNameEl.innerText = planets[currentPlanetIdx].name;
+            }
 
-                // Отскок от стен
-                if (p.x < 0 || p.x > width) p.vx *= -1;
-                if (p.y < 0 || p.y > height) p.vy *= -1;
+            units.forEach(u => { u.update(); u.draw(); });
 
-                // Физика мыши
-                let dx = mouse.x - p.x;
-                let dy = mouse.y - p.y;
-                let dist = Math.hypot(dx, dy); // Быстрое расстояние
-
-                if (dist < 150) {
-                    let force = (150 - dist) / 150;
-                    if (mouse.down) {
-                        // Притяжение (Грав-колодец)
-                        p.vx += dx / dist * force * 0.8;
-                        p.vy += dy / dist * force * 0.8;
-                    } else {
-                        // Искажение (Палец «гнет» пространство)
-                        p.vx -= dx / dist * force * 2;
-                        p.vy -= dy / dist * force * 2;
-                        
-                        // Добавляем креативность: линии только рядом с пальцем
-                        ctx.strokeStyle = `hsla(${p.hue}, 100%, 80%, ${force/2})`;
-                        ctx.lineWidth = 1 * force;
-                        ctx.beginPath();
-                        ctx.moveTo(p.x, p.y);
-                        ctx.lineTo(mouse.x, mouse.y);
-                        ctx.stroke();
-                    }
-                }
-
-                // Трение (плавное замедление)
-                p.vx *= 0.99;
-                p.vy *= 0.99;
-
-                // Рисуем саму звезду со свечением
-                ctx.fillStyle = `hsla(${p.hue}, 100%, 70%, 1)`;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
+            particles.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy; p.life -= 0.02;
+                if(p.life <= 0) particles.splice(i,1);
+                ctx.fillStyle = p.col; ctx.globalAlpha = p.life;
+                ctx.fillRect(p.x, p.y, 2, 2);
             });
-
-            // Восстанавливаем стандартную композицию
-            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 1;
 
             requestAnimationFrame(draw);
         }
 
-        const updateMouse = (e) => {
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            mouse.x = clientX;
-            mouse.y = clientY;
+        buyBtn.onclick = () => {
+            if(money >= unitCost) {
+                money -= unitCost;
+                moneyEl.innerText = money;
+                units.push(new Unit());
+                unitCost = Math.floor(unitCost * 1.5);
+                buyBtn.innerText = `КУПИТЬ ЖНЕЦА ($${unitCost})`;
+            }
         };
 
-        const tapExplosion = () => {
-            particles.forEach(p => {
-                let dx = mouse.x - p.x;
-                let dy = mouse.y - p.y;
-                let dist = Math.hypot(dx, dy);
-                if (dist < 100) {
-                    let force = (100 - dist) / 100;
-                    // Резкий импульс в стороны
-                    p.vx = -dx / dist * force * 15;
-                    p.vy = -dy / dist * force * 15;
-                }
-            });
-        };
+        // Старт: даем одного бесплатного для начала
+        setTimeout(() => { units.push(new Unit()); }, 500);
 
-        window.addEventListener('mousemove', updateMouse);
-        window.addEventListener('touchmove', updateMouse);
-        window.addEventListener('mousedown', () => mouse.down = true);
-        window.addEventListener('touchstart', (e) => { updateMouse(e); mouse.down = true; tapExplosion(); });
-        window.addEventListener('mouseup', () => mouse.down = false);
-        window.addEventListener('touchend', () => mouse.down = false);
-        window.addEventListener('click', tapExplosion);
-
+        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('touchmove', e => { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; });
         window.onresize = init;
-        init();
-        draw();
+        init(); draw();
     </script>
 </body>
 </html>
