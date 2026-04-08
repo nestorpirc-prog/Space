@@ -3,38 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NESTOR: PLANET EATER</title>
+    <title>NESTOR: PLANET EATER PRO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-        body { margin: 0; background: #000; color: #fff; font-family: 'Orbitron', sans-serif; overflow: hidden; touch-action: none; }
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap');
+        body { margin: 0; background: #020205; color: #fff; font-family: 'JetBrains Mono', monospace; overflow: hidden; touch-action: none; }
         canvas { display: block; }
-        .ui { position: fixed; z-index: 10; pointer-events: none; width: 100%; padding: 20px; box-sizing: border-box; }
-        .shop-btn { 
-            pointer-events: auto; background: rgba(255,255,255,0.1); 
-            border: 1px solid #fff; padding: 10px 20px; cursor: pointer;
-            transition: 0.3s; font-size: 12px;
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .ui-top { position: fixed; top: 0; left: 0; width: 100%; padding: 20px; pointer-events: none; z-index: 10; }
+        .ui-bottom { position: fixed; bottom: 0; left: 0; width: 100%; padding: 20px; z-index: 10; display: flex; gap: 10px; }
+        .btn { 
+            pointer-events: auto; padding: 12px; flex: 1; border-radius: 4px;
+            font-size: 10px; font-weight: 800; text-transform: uppercase; transition: 0.2s;
         }
-        .shop-btn:hover { background: #fff; color: #000; }
-        .shop-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-        .planet-info { text-align: center; width: 100%; top: 20%; position: fixed; }
+        .btn-active { background: #fff; color: #000; }
+        .btn-active:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,255,255,0.2); }
+        .btn:disabled { opacity: 0.2; filter: grayscale(1); }
+        .stat-val { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
     </style>
 </head>
 <body>
 
-    <div class="ui flex justify-between items-start">
-        <div>
-            <div class="text-[10px] opacity-50 uppercase">Баланс</div>
-            <div class="text-2xl font-black text-yellow-400">$<span id="money">0</span></div>
+    <div class="ui-top flex justify-between">
+        <div class="glass p-3 rounded">
+            <div class="text-[8px] opacity-50 uppercase tracking-widest">Кредиты</div>
+            <div class="text-xl font-black stat-val">$<span id="money">0</span></div>
         </div>
-        <button id="buyBtn" class="shop-btn">КУПИТЬ ЖНЕЦА ($50)</button>
+        <div class="glass p-3 rounded text-right">
+            <div class="text-[8px] opacity-50 uppercase tracking-widest">Урон</div>
+            <div class="text-xl font-black text-blue-400">x<span id="dmgMult">1</span></div>
+        </div>
     </div>
 
-    <div class="planet-info">
-        <div id="planetName" class="text-3xl font-black tracking-[0.3em] uppercase mb-2">Меркурий</div>
-        <div class="w-48 h-1 bg-white/20 mx-auto overflow-hidden">
-            <div id="hpBar" class="h-full bg-red-600 transition-all duration-100" style="width: 100%"></div>
+    <div class="fixed top-[20%] w-full text-center pointer-events-none">
+        <div id="planetName" class="text-4xl font-black uppercase tracking-tighter mb-2 italic">МЕРКУРИЙ</div>
+        <div class="w-64 h-1.5 bg-white/10 mx-auto rounded-full overflow-hidden">
+            <div id="hpBar" class="h-full bg-gradient-to-r from-red-600 to-orange-500 transition-all duration-75" style="width: 100%"></div>
         </div>
+    </div>
+
+    <div class="ui-bottom">
+        <button id="buyUnit" class="btn btn-active">➕ Жнец ($<span id="unitCost">50</span>)</button>
+        <button id="buyDmg" class="btn btn-active">🔥 Сила ($<span id="dmgCost">100</span>)</button>
     </div>
 
     <canvas id="c"></canvas>
@@ -42,131 +52,130 @@
     <script>
         const canvas = document.getElementById('c');
         const ctx = canvas.getContext('2d');
-        const moneyEl = document.getElementById('money');
-        const buyBtn = document.getElementById('buyBtn');
-        const hpBar = document.getElementById('hpBar');
-        const planetNameEl = document.getElementById('planetName');
-
-        let w, h, money = 0, units = [], particles = [];
+        
+        let w, h, money = 0, damageLevel = 1, units = [], particles = [];
         let mouse = { x: -1000, y: -1000 };
         
         const planets = [
-            { name: "Меркурий", hp: 100, maxHp: 100, size: 40, color: "#888", reward: 150 },
-            { name: "Венера", hp: 300, maxHp: 300, size: 60, color: "#e3bb76", reward: 400 },
-            { name: "Земля", hp: 800, maxHp: 800, size: 65, color: "#2271b3", reward: 1000 },
-            { name: "Марс", hp: 1500, maxHp: 1500, size: 55, color: "#e27b58", reward: 2500 },
-            { name: "Юпитер", hp: 5000, maxHp: 5000, size: 100, color: "#d39c7e", reward: 7000 }
+            { name: "Меркурий", hp: 150, mhp: 150, sz: 45, col: "#A5A5A5", reward: 200 },
+            { name: "Венера", hp: 500, mhp: 500, sz: 70, col: "#E3BB76", reward: 600 },
+            { name: "Земля", hp: 1200, mhp: 1200, sz: 75, col: "#2D5DA1", reward: 1500 },
+            { name: "Марс", hp: 2500, mhp: 2500, sz: 65, col: "#C1440E", reward: 3500 },
+            { name: "Юпитер", hp: 8000, mhp: 8000, sz: 110, col: "#D39C7E", reward: 10000 }
         ];
-        let currentPlanetIdx = 0;
-        let unitCost = 50;
+        
+        let pIdx = 0;
+        let uCost = 50, dCost = 100;
 
         function init() {
             w = canvas.width = window.innerWidth;
             h = canvas.height = window.innerHeight;
+            if(units.length === 0) units.push(new Unit());
         }
 
         class Unit {
             constructor() {
-                this.x = Math.random() * w;
-                this.y = Math.random() * h;
-                this.vx = 0; this.vy = 0;
-                this.r = 3;
+                this.x = Math.random()*w; this.y = Math.random()*h;
+                this.vx = 0; this.vy = 0; this.r = 2.5;
             }
             update() {
-                // Тяга к пальцу
-                let dx = mouse.x - this.x;
-                let dy = mouse.y - this.y;
-                let dist = Math.hypot(dx, dy);
-                if(dist > 5) {
-                    this.vx += dx / dist * 0.5;
-                    this.vy += dy / dist * 0.5;
-                }
-                
+                let dx = mouse.x - this.x; let dy = mouse.y - this.y;
+                let d = Math.hypot(dx, dy);
+                if(d > 5) { this.vx += dx/d * 0.6; this.vy += dy/d * 0.6; }
                 this.x += this.vx; this.y += this.vy;
-                this.vx *= 0.95; this.vy *= 0.95;
+                this.vx *= 0.94; this.vy *= 0.94;
 
-                // Проверка столкновения с планетой
-                let pdx = w/2 - this.x;
-                let pdy = h/2 - this.y;
-                let pDist = Math.hypot(pdx, pdy);
-                let planet = planets[currentPlanetIdx];
+                let pl = planets[pIdx];
+                let pdx = w/2 - this.x; let pdy = h/2 - this.y;
+                let pd = Math.hypot(pdx, pdy);
 
-                if(pDist < planet.size) {
-                    planet.hp -= 1;
-                    this.vx = -pdx / pDist * 10; // Отскок
-                    this.vy = -pdy / pDist * 10;
-                    createParticles(this.x, this.y, planet.color);
+                if(pd < pl.sz) {
+                    let dmg = 1 * damageLevel;
+                    pl.hp -= dmg;
+                    money += 1; // Деньги за каждый "кусь"
+                    updateUI();
+                    this.vx = -pdx/pd * 12; this.vy = -pdy/pd * 12;
+                    spawnP(this.x, this.y, pl.col);
                 }
             }
             draw() {
                 ctx.fillStyle = "#fff";
-                ctx.shadowBlur = 10; ctx.shadowColor = "#fff";
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
-                ctx.shadowBlur = 0;
             }
         }
 
-        function createParticles(x, y, col) {
-            for(let i=0; i<3; i++) {
-                particles.push({
-                    x, y, vx: (Math.random()-0.5)*5, vy: (Math.random()-0.5)*5,
-                    life: 1, col: col
-                });
+        function spawnP(x, y, col) {
+            for(let i=0; i<2; i++) {
+                particles.push({x, y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.5)*6, l:1, c:col});
             }
+        }
+
+        function updateUI() {
+            document.getElementById('money').innerText = Math.floor(money);
+            document.getElementById('hpBar').style.width = (planets[pIdx].hp / planets[pIdx].mhp * 100) + "%";
+            document.getElementById('unitCost').innerText = uCost;
+            document.getElementById('dmgCost').innerText = dCost;
+            document.getElementById('dmgMult').innerText = damageLevel;
+            
+            document.getElementById('buyUnit').disabled = money < uCost;
+            document.getElementById('buyDmg').disabled = money < dCost;
         }
 
         function draw() {
-            ctx.fillStyle = "rgba(0,0,0,0.2)";
+            ctx.fillStyle = "rgba(2, 2, 5, 0.3)";
             ctx.fillRect(0,0,w,h);
             
-            let planet = planets[currentPlanetIdx];
+            let p = planets[pIdx];
+            
+            // Планета
+            ctx.save();
+            ctx.shadowBlur = 40; ctx.shadowColor = p.col;
+            ctx.fillStyle = p.col;
+            ctx.beginPath(); ctx.arc(w/2, h/2, p.sz, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
 
-            // Отрисовка планеты
-            ctx.fillStyle = planet.color;
-            ctx.shadowBlur = 20; ctx.shadowColor = planet.color;
-            ctx.beginPath(); ctx.arc(w/2, h/2, planet.size, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
-
-            // Логика HP
-            hpBar.style.width = (planet.hp / planet.maxHp * 100) + "%";
-            if(planet.hp <= 0) {
-                money += planet.reward;
-                moneyEl.innerText = money;
-                currentPlanetIdx = (currentPlanetIdx + 1) % planets.length;
-                planets[currentPlanetIdx].hp = planets[currentPlanetIdx].maxHp;
-                planetNameEl.innerText = planets[currentPlanetIdx].name;
+            // Проверка смерти планеты
+            if(p.hp <= 0) {
+                money += p.reward;
+                pIdx = (pIdx + 1) % planets.length;
+                planets[pIdx].hp = planets[pIdx].mhp;
+                document.getElementById('planetName').innerText = planets[pIdx].name;
+                updateUI();
             }
 
             units.forEach(u => { u.update(); u.draw(); });
-
             particles.forEach((p, i) => {
-                p.x += p.vx; p.y += p.vy; p.life -= 0.02;
-                if(p.life <= 0) particles.splice(i,1);
-                ctx.fillStyle = p.col; ctx.globalAlpha = p.life;
+                p.x += p.vx; p.y += p.vy; p.l -= 0.03;
+                if(p.l <= 0) particles.splice(i,1);
+                ctx.fillStyle = p.c; ctx.globalAlpha = p.l;
                 ctx.fillRect(p.x, p.y, 2, 2);
             });
             ctx.globalAlpha = 1;
-
             requestAnimationFrame(draw);
         }
 
-        buyBtn.onclick = () => {
-            if(money >= unitCost) {
-                money -= unitCost;
-                moneyEl.innerText = money;
+        document.getElementById('buyUnit').onclick = () => {
+            if(money >= uCost) {
+                money -= uCost;
                 units.push(new Unit());
-                unitCost = Math.floor(unitCost * 1.5);
-                buyBtn.innerText = `КУПИТЬ ЖНЕЦА ($${unitCost})`;
+                uCost = Math.floor(uCost * 1.6);
+                updateUI();
             }
         };
 
-        // Старт: даем одного бесплатного для начала
-        setTimeout(() => { units.push(new Unit()); }, 500);
+        document.getElementById('buyDmg').onclick = () => {
+            if(money >= dCost) {
+                money -= dCost;
+                damageLevel++;
+                dCost = Math.floor(dCost * 2.2);
+                updateUI();
+            }
+        };
 
         window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
         window.addEventListener('touchmove', e => { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; });
         window.onresize = init;
-        init(); draw();
+        init(); updateUI(); draw();
     </script>
 </body>
 </html>
