@@ -3,181 +3,464 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NESTOR: GALACTIC OVERLORD</title>
+    <title>NESTOR: TOTAL DESTRUCTION</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@800&display=swap');
-        body { margin: 0; background: #000; color: #fff; font-family: 'JetBrains Mono', monospace; overflow: hidden; touch-action: none; }
-        canvas { display: block; }
-        .glass { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px); }
-        .btn { 
-            pointer-events: auto; padding: 12px 4px; flex: 1; border-radius: 4px;
-            font-size: 8px; font-weight: 800; text-transform: uppercase; transition: 0.1s;
-            border-bottom: 3px solid rgba(255,255,255,0.2);
+        @import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=JetBrains+Mono:wght@400;800&display=swap');
+        
+        :root { --bg: #020205; --neon: #0ff; }
+        body { 
+            margin: 0; background: var(--bg); color: #fff; 
+            font-family: 'JetBrains Mono', monospace; 
+            overflow: hidden; touch-action: none; cursor: crosshair;
         }
-        .btn:active { transform: translateY(2px); border-bottom-width: 1px; }
-        .btn:disabled { opacity: 0.1; filter: grayscale(1); }
-        #money { color: #4ade80; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5); }
+        canvas { display: block; z-index: 1; }
+        
+        /* Стилизация UI */
+        .glass { 
+            background: rgba(255, 255, 255, 0.01); 
+            backdrop-filter: blur(15px); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .header-font { font-family: 'Syncopate', sans-serif; text-transform: uppercase; tracking-tighter; }
+        
+        .stat-box { padding: 10px 20px; border-radius: 8px; }
+        .stat-label { font-size: 8px; opacity: 0.5; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2px; }
+        .stat-value { font-size: 18px; font-weight: 800; color: #4ade80; text-shadow: 0 0 15px rgba(74, 222, 128, 0.7); }
+
+        .btn-upgrade {
+            pointer-events: auto; background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 6px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); flex: 1; text-align: left;
+        }
+        .btn-upgrade:hover:not(:disabled) { background: rgba(255,255,255,0.1); border-color: #fff; transform: translateY(-2px); }
+        .btn-upgrade:active:not(:disabled) { transform: scale(0.97); }
+        .btn-upgrade:disabled { opacity: 0.1; filter: grayscale(1); }
+        .btn-price { float: right; color: #facc15; font-weight: 800; }
+
+        #planet-hud { position: fixed; top: 15%; left: 50%; transform: translateX(-50%); text-center; pointer-events: none; z-index: 5; }
+        #planet-name { font-size: 40px; font-weight: 900; letter-spacing: -2px; color: #fff; text-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        
+        /* Эффект загрузки при сжатии */
+        #charge-overlay {
+            position: fixed; inset: 0; background: radial-gradient(circle, rgba(0,255,255,0.1) 0%, rgba(0,0,0,0) 70%);
+            opacity: 0; pointer-events: none; z-index: 2; transition: opacity 0.1s;
+        }
     </style>
 </head>
 <body>
 
-    <div class="fixed top-0 left-0 w-full p-4 flex justify-between pointer-events-none z-10">
-        <div class="glass p-3 rounded-lg">
-            <div class="text-[8px] opacity-40 uppercase mb-1">Ресурсы</div>
-            <div class="text-xl font-black font-mono tracking-tighter leading-none">$<span id="money">0</span></div>
+    <canvas id="world"></canvas>
+    <div id="charge-overlay"></div>
+
+    <div class="fixed top-0 left-0 w-full p-6 flex justify-between items-start pointer-events-none z-10">
+        <div class="glass stat-box">
+            <div class="stat-label">Ресурсы_Nestor_Corp</div>
+            <div class="stat-value">$<span id="money-val">0</span></div>
         </div>
-        <div class="glass p-3 rounded-lg text-right min-w-[120px]">
-            <div id="planetName" class="text-xs font-black italic uppercase mb-2">Меркурий</div>
-            <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                <div id="hpBar" class="h-full bg-gradient-to-r from-red-500 via-orange-400 to-yellow-300 transition-all duration-75" style="width: 100%"></div>
-            </div>
+        <div class="glass stat-box text-right">
+            <div class="stat-label">Жнецы_Активны</div>
+            <div class="stat-value text-blue-400"><span id="units-val">1</span></div>
         </div>
     </div>
 
-    <div class="fixed bottom-0 left-0 w-full p-4 z-10 flex gap-2">
-        <button id="buyUnit" class="btn glass text-white">➕ Рій ($<span id="uCost">50</span>)</button>
-        <button id="buyDmg" class="btn glass text-white">🔥 Урон ($<span id="dCost">100</span>)</button>
-        <button id="buySpd" class="btn glass text-white">⚡ Грав ($<span id="sCost">150</span>)</button>
+    <div id="planet-hud">
+        <div id="planet-name" class="header-font">Меркурий</div>
+        <div class="w-80 h-1.5 bg-white/10 rounded-full mt-3 mx-auto overflow-hidden">
+            <div id="hp-bar" class="h-full bg-gradient-to-r from-red-600 via-orange-500 to-yellow-400 transition-all duration-75" style="width: 100%"></div>
+        </div>
     </div>
 
-    <canvas id="c"></canvas>
+    <div class="fixed bottom-0 left-0 w-full p-6 glass z-10 space-y-4">
+        <div class="header-font text-xs opacity-40 tracking-[0.5em]">Панель управления уничтожением</div>
+        <div class="flex gap-4">
+            <button id="up-unit" class="btn-upgrade disabled">
+                <span class="font-bold text-white uppercase text-[10px]">➕ Добавить рій</span>
+                <span class="text-[9px] opacity-50 block mt-1">Добавляет 2 новых жнецов</span>
+                <span class="btn-price">$<span id="cost-unit">100</span></span>
+            </button>
+            <button id="up-dmg" class="btn-upgrade disabled">
+                <span class="font-bold text-white uppercase text-[10px]">🔥 Усилить взрыв</span>
+                <span class="text-[9px] opacity-50 block mt-1">Критический урон при разлете</span>
+                <span class="btn-price">$<span id="cost-dmg">150</span></span>
+            </button>
+            <button id="up-size" class="btn-upgrade disabled">
+                <span class="font-bold text-white uppercase text-[10px]">⚛️ Масса жнецов</span>
+                <span class="text-[9px] opacity-50 block mt-1">Базовый урон при столкновении</span>
+                <span class="btn-price">$<span id="cost-size">200</span></span>
+            </button>
+        </div>
+    </div>
 
     <script>
-        const canvas = document.getElementById('c');
+        // ==========================================
+        // КОНФИГУРАЦИЯ И ЯДРО СИСТЕМЫ
+        // ==========================================
+        const canvas = document.getElementById('world');
         const ctx = canvas.getContext('2d');
-        
-        let w, h, money = 0, units = [], particles = [];
-        let dmgLvl = 1, spdLvl = 1;
-        let mouse = { x: -1000, y: -1000 };
-        
-        const planets = [
-            { n: "Меркурий", hp: 150, m: 150, sz: 35, c: "#888", r: 500 },
-            { n: "Венера", hp: 600, m: 600, sz: 55, c: "#E3BB76", r: 1500 },
-            { n: "Земля", hp: 2000, m: 2000, sz: 60, c: "#2D5DA1", r: 4000 },
-            { n: "Марс", hp: 5000, m: 5000, sz: 50, c: "#C1440E", r: 8000 },
-            { n: "Юпитер", hp: 15000, m: 15000, sz: 100, c: "#D39C7E", r: 25000 },
-            { n: "Сатурн", hp: 30000, m: 30000, sz: 85, c: "#C5AB6E", r: 60000, ring: true },
-            { n: "Уран", hp: 70000, m: 70000, sz: 70, c: "#B5E3E3", r: 150000 },
-            { n: "Нептун", hp: 150000, m: 150000, sz: 68, c: "#4B70DD", r: 350000 },
-            { n: "Плутон", hp: 400000, m: 400000, sz: 30, c: "#FFF", r: 1000000 },
-            { n: "СОЛНЦЕ", hp: 2000000, m: 2000000, sz: 140, c: "#FFCC00", r: 9999999, boss: true }
-        ];
-        
-        let pIdx = 0, uC = 50, dC = 100, sC = 150;
+        const chargeOverlay = document.getElementById('charge-overlay');
 
+        let w, h, frame = 0;
+        let money = 0;
+        let units = [], particles = [];
+        let mouse = { x: -1000, y: -1000, down: false };
+
+        // Состояние прокачки
+        let dmgLvl = 1, unitMassLvl = 1;
+        let costUnit = 100, costDmg = 150, costSize = 200;
+
+        // ==========================================
+        // ДАННЫЕ О ПЛАНЕТАХ (Реалистичные настройки)
+        // ==========================================
+        const planetData = [
+            { n: "Меркурий", hp: 300,  m: 300, sz: 120, rwd: 1000,  c1: "#444", c2: "#222", atm: "rgba(255,255,255,0.05)" },
+            { n: "Венера",   hp: 1000, m: 1000, sz: 180, rwd: 2500,  c1: "#e3bb76", c2: "#a17a4c", atm: "rgba(255,200,100,0.2)" },
+            { n: "Земля",    hp: 3000, m: 3000, sz: 190, rwd: 6000,  c1: "#2D5DA1", c2: "#1a3c6e", atm: "rgba(100,200,255,0.3)", life: true },
+            { n: "Марс",     hp: 8000, m: 8000, sz: 150, rwd: 15000, c1: "#C1440E", c2: "#7e2c09", atm: "rgba(255,100,50,0.15)" },
+            { n: "Юпитер",   hp: 25000,m: 25000,sz: 280, rwd: 40000, c1: "#D39C7E", c2: "#9c6c54", atm: "rgba(255,220,180,0.1)", gas: true },
+            { n: "Сатурн",   hp: 60000,m: 60000,sz: 240, rwd: 90000, c1: "#C5AB6E", c2: "#8d794e", atm: "rgba(200,180,140,0.1)", ring: true },
+            { n: "Уран",     hp: 150000,m: 150000,sz: 200, rwd: 200000, c1: "#B5E3E3", c2: "#78a8a8", atm: "rgba(100,255,255,0.1)" },
+            { n: "Нептун",   hp: 400000,m: 400000,sz: 195, rwd: 500000, c1: "#4B70DD", c2: "#2a428c", atm: "rgba(50,50,255,0.2)" },
+            { n: "СОЛНЦЕ",   hp: 5000000,m: 5000000,sz: 350, rwd: 9999999, c1: "#FFCC00", c2: "#FF6600", atm: "rgba(255,150,0,0.5)", star: true }
+        ];
+        let pIdx = 0;
+
+        // ==========================================
+        // ИНИЦИАЛИЗАЦИЯ И ОБНОВЛЕНИЕ РАЗМЕРОВ
+        // ==========================================
         function init() {
             w = canvas.width = window.innerWidth;
             h = canvas.height = window.innerHeight;
-            if(!units.length) units.push(new Unit());
+            // Спавним первого жнеца, если пусто
+            if (units.length === 0) units.push(new Unit(w / 4, h / 2));
         }
 
+        // ==========================================
+        // КЛАСС ЖНЕЦА (Новая Физика)
+        // ==========================================
         class Unit {
-            constructor() {
-                this.x = Math.random()*w; this.y = Math.random()*h;
-                this.vx = 0; this.vy = 0;
+            constructor(x, y) {
+                this.x = x || Math.random() * w;
+                this.y = y || Math.random() * h;
+                this.vx = (Math.random() - 0.5) * 5;
+                this.vy = (Math.random() - 0.5) * 5;
+                this.baseSize = 4;
+                this.currentSize = this.baseSize;
+                this.color = "#fff";
+                this.charged = 0; // Состояние заряда (сжатия)
             }
+
             update() {
-                let dx = mouse.x - this.x, dy = mouse.y - this.y;
-                let d = Math.hypot(dx, dy);
-                
-                // Физика гравитации (притяжение к пальцу)
-                if(d > 5) {
-                    let force = Math.min(d, 200) / 200;
-                    this.vx += (dx/d) * (0.4 + spdLvl*0.1) * force;
-                    this.vy += (dy/d) * (0.4 + spdLvl*0.1) * force;
+                this.currentSize = this.baseSize + (unitMassLvl - 1) * 0.5;
+
+                if (mouse.down) {
+                    // РЕЖИМ СЖАТИЯ: Летим в точку нажатия
+                    let dx = mouse.x - this.x;
+                    let dy = mouse.y - this.y;
+                    let d = Math.hypot(dx, dy);
+                    if (d > 1) {
+                        // Чем ближе, тем быстрее сжимаемся
+                        let speed = Math.min(d, 50) / 2; 
+                        this.vx = (dx / d) * speed;
+                        this.vy = (dy / d) * speed;
+                        this.charged = Math.min(this.charged + 0.02, 1);
+                    } else {
+                        // Удерживаем в точке
+                        this.vx *= 0.1; this.vy *= 0.1;
+                    }
+                } else {
+                    // РЕЖИМ ПОЛЕТА/ВЗРЫВА
+                    if (this.charged > 0) {
+                        // ПРОИЗОШЕЛ ВЗРЫВ: Резко разлетаемся
+                        let angle = Math.random() * Math.PI * 2;
+                        let power = 20 + this.charged * 30 + (dmgLvl * 2);
+                        this.vx = Math.cos(angle) * power;
+                        this.vy = Math.sin(angle) * power;
+                        this.charged = 0; // Сбрасываем заряд
+                    }
+
+                    // Обычное движение и трение
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.vx *= 0.94; // Сильное трение в космосе
+                    this.vy *= 0.94;
+
+                    // Отскок от границ экрана (чтобы не терялись)
+                    if (this.x < 0 || this.x > w) this.vx *= -1;
+                    if (this.y < 0 || this.y > h) this.vy *= -1;
                 }
-                
-                this.x += this.vx; this.y += this.vy;
-                this.vx *= 0.96; this.vy *= 0.96; // Трение космоса
 
-                let pl = planets[pIdx];
-                let pdx = w/2 - this.x, pdy = h/2 - this.y;
-                let pd = Math.hypot(pdx, pdy);
+                // Взаимодействие с планетой
+                this.checkPlanetCollision();
+            }
 
-                if(pd < pl.sz) {
-                    // Урон зависит от скорости (Физика!)
+            checkPlanetCollision() {
+                let p = planetData[pIdx];
+                let pdx = w / 2 - this.x;
+                let pdy = h / 2 - this.y;
+                let dist = Math.hypot(pdx, pdy);
+
+                if (dist < p.sz) {
+                    // СТОЛКНОВЕНИЕ: Наносим урон
+                    // Урон зависит от массы жнеца и скорости в момент удара
                     let speedImpact = Math.hypot(this.vx, this.vy);
-                    let finalDmg = dmgLvl * (1 + speedImpact * 0.2);
+                    let baseDmg = unitMassLvl * 0.5;
+                    let speedBonus = speedImpact * 0.1;
+                    let finalDmg = baseDmg + speedBonus;
                     
-                    pl.hp -= finalDmg;
-                    money += (finalDmg * 0.1);
+                    p.hp -= finalDmg;
+                    money += (finalDmg * 0.05); // Крошечные деньги за каждый кусь
+
+                    // Отскок
+                    this.vx = -pdx / dist * Math.max(speedImpact * 0.5, 5);
+                    this.vy = -pdy / dist * Math.max(speedImpact * 0.5, 5);
+
+                    // Частицы удара
+                    if(particles.length < 100) spawnParticles(this.x, this.y, p.c1, 5);
                     
-                    this.vx = -pdx/pd * 10; this.vy = -pdy/pd * 10;
-                    if(particles.length < 40) spawnP(this.x, this.y, pl.c);
-                    updateUI();
+                    updateUI(true); // Обновляем только деньги и HP
                 }
             }
+
             draw() {
-                ctx.fillStyle = "#fff";
-                ctx.fillRect(this.x-1, this.y-1, 2.5, 2.5);
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                
+                // Цвет меняется в зависимости от заряда
+                let r = 255;
+                let g = 255 - (this.charged * 255);
+                let b = 255 - (this.charged * 255);
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                
+                // Свечение жнеца
+                ctx.shadowBlur = 10 + this.charged * 20;
+                ctx.shadowColor = `rgb(${r}, ${g}, ${b})`;
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, this.currentSize, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
             }
         }
 
-        function spawnP(x, y, col) {
-            particles.push({x, y, vx:(Math.random()-0.5)*10, vy:(Math.random()-0.5)*10, l:1, c:col});
+        // ==========================================
+        // СИСТЕМА ЧАСТИЦ (Для Мяса)
+        // ==========================================
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    l: 1, // life
+                    c: color,
+                    s: Math.random() * 3 + 1 // size
+                });
+            }
         }
 
-        function updateUI() {
-            document.getElementById('money').innerText = Math.floor(money);
-            document.getElementById('hpBar').style.width = (planets[pIdx].hp / planets[pIdx].m * 100) + "%";
-            document.getElementById('uCost').innerText = uC;
-            document.getElementById('dCost').innerText = dC;
-            document.getElementById('sCost').innerText = sC;
-            document.getElementById('buyUnit').disabled = money < uC;
-            document.getElementById('buyDmg').disabled = money < dC;
-            document.getElementById('buySpd').disabled = money < sC;
-        }
+        // ==========================================
+        // РЕНДЕРИНГ РЕАЛИСТИЧНЫХ ПЛАНЕТ
+        // ==========================================
+        function drawPlanet() {
+            let p = planetData[pIdx];
+            ctx.save();
+            ctx.translate(w / 2, h / 2);
 
-        function draw() {
-            ctx.fillStyle = "rgba(0,0,0,0.3)";
-            ctx.fillRect(0,0,w,h);
+            // 1. Звезда (если это Солнце)
+            if (p.star) {
+                ctx.shadowBlur = 100; ctx.shadowColor = "#FF6600";
+            }
+
+            // 2. Атмосфера (внешнее свечение)
+            let atmGrad = ctx.createRadialGradient(0, 0, p.sz, 0, 0, p.sz + 30);
+            atmGrad.addColorStop(0, p.atm);
+            atmGrad.addColorStop(1, "rgba(0,0,0,0)");
+            ctx.fillStyle = atmGrad;
+            ctx.beginPath(); ctx.arc(0, 0, p.sz + 30, 0, Math.PI * 2); ctx.fill();
+
+            // 3. Тело планеты (Базовый градиент)
+            let bodyGrad = ctx.createRadialGradient(-p.sz/3, -p.sz/3, 0, 0, 0, p.sz);
+            bodyGrad.addColorStop(0, p.c1);
+            bodyGrad.addColorStop(1, p.c2);
+            ctx.fillStyle = bodyGrad;
+            ctx.shadowBlur = 0; // Убираем свечение для тела
+            ctx.beginPath(); ctx.arc(0, 0, p.sz, 0, Math.PI * 2); ctx.fill();
             
-            let p = planets[pIdx];
-            
-            // Сатурн: кольца
-            if(p.ring) {
-                ctx.strokeStyle = "rgba(197, 171, 110, 0.4)";
-                ctx.lineWidth = 15;
+            // 4. Текстура (симуляция облаков/континентов через Composite)
+            ctx.globalCompositeOperation = 'overlay'; 
+            ctx.fillStyle = "rgba(0,0,0,0.1)"; // Базовая тень текстуры
+            for(let i=0; i<5; i++) {
+                ctx.rotate(frame * 0.001 * (i+1));
+                ctx.fillStyle = i%2===0 ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)";
                 ctx.beginPath();
-                ctx.ellipse(w/2, h/2, p.sz*2, p.sz*0.6, Math.PI/6, 0, Math.PI*2);
+                ctx.ellipse(0, 0, p.sz, p.sz/2, i * Math.PI/3, 0, Math.PI*2);
+                ctx.fill();
+            }
+            ctx.globalCompositeOperation = 'source-over'; // Возвращаем режим
+
+            // 5. Кольца (Сатурн)
+            if (p.ring) {
+                ctx.strokeStyle = "rgba(197, 171, 110, 0.4)";
+                ctx.lineWidth = 20;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, p.sz * 2.2, p.sz * 0.7, Math.PI / 8, 0, Math.PI * 2);
                 ctx.stroke();
             }
 
-            // Планета
-            let g = ctx.createRadialGradient(w/2, h/2, 0, w/2, h/2, p.sz);
-            g.addColorStop(0, p.c);
-            g.addColorStop(1, "#000");
-            ctx.fillStyle = g;
-            ctx.beginPath(); ctx.arc(w/2, h/2, p.sz, 0, Math.PI*2); ctx.fill();
+            // 6. Тень (Темная сторона)
+            let shadowGrad = ctx.createRadialGradient(p.sz/2, p.sz/2, p.sz/2, p.sz/2, p.sz/2, p.sz*1.5);
+            shadowGrad.addColorStop(0, "rgba(0,0,0,0)");
+            shadowGrad.addColorStop(1, "rgba(0,0,0,0.8)");
+            ctx.fillStyle = shadowGrad;
+            ctx.beginPath(); ctx.arc(0, 0, p.sz, 0, Math.PI * 2); ctx.fill();
 
-            if(p.hp <= 0) {
-                money += p.r;
-                pIdx = (pIdx + 1) % planets.length;
-                planets[pIdx].hp = planets[pIdx].m;
-                document.getElementById('planetName').innerText = planets[pIdx].n;
+            ctx.restore();
+        }
+
+        // ==========================================
+        // ГЛАВНЫЙ ЦИКЛ ОТРИСОВКИ (Game Loop)
+        // ==========================================
+        function draw() {
+            frame++;
+            ctx.fillStyle = varColor('--bg'); // Очистка фона
+            ctx.fillRect(0, 0, w, h);
+
+            // Звездное небо (параллакс)
+            ctx.fillStyle = "rgba(255,255,255,0.1)";
+            for(let i=0; i<10; i++) ctx.fillRect(Math.random()*w, Math.random()*h, 1, 1);
+
+            // Планета
+            drawPlanet();
+
+            // Проверка смерти планеты
+            let p = planetData[pIdx];
+            if (p.hp <= 0) {
+                money += p.rwd;
+                spawnParticles(w / 2, h / 2, p.c1, 50); // Взрыв планеты
+                pIdx = (pIdx + 1) % planetData.length;
+                planetData[pIdx].hp = planetData[pIdx].m; // Сброс HP новой планеты
                 updateUI();
             }
 
+            // Жнецы
             units.forEach(u => { u.update(); u.draw(); });
+
+            // Частицы
+            ctx.save();
             particles.forEach((p, i) => {
-                p.x += p.vx; p.y += p.vy; p.l -= 0.04;
-                if(p.l <= 0) particles.splice(i,1);
-                ctx.fillStyle = p.c; ctx.fillRect(p.x, p.y, 1.5, 1.5);
+                p.x += p.vx; p.y += p.vy; p.l -= 0.02;
+                if (p.l <= 0) particles.splice(i, 1);
+                ctx.fillStyle = p.c;
+                ctx.globalAlpha = p.l;
+                ctx.fillRect(p.x, p.y, p.s, p.s);
             });
+            ctx.restore();
+
+            // Эффект оверлея при сжатии
+            if (mouse.down) {
+                let charge = Math.min(units[0].charged, 1);
+                chargeOverlay.style.opacity = charge * 0.5;
+            } else {
+                chargeOverlay.style.opacity = 0;
+            }
 
             requestAnimationFrame(draw);
         }
 
-        document.getElementById('buyUnit').onclick = () => { if(money >= uC){ money -= uC; units.push(new Unit(), new Unit()); uC = Math.floor(uC * 1.8); updateUI(); } };
-        document.getElementById('buyDmg').onclick = () => { if(money >= dC){ money -= dC; dmgLvl += 5; dC = Math.floor(dC * 2.5); updateUI(); } };
-        document.getElementById('buySpd').onclick = () => { if(money >= sC){ money -= sC; spdLvl += 1; sC = Math.floor(sC * 2); updateUI(); } };
+        // ==========================================
+        // ЛОГИКА UI И АПГРЕЙДОВ
+        // ==========================================
+        const moneyVal = document.getElementById('money-val');
+        const unitsVal = document.getElementById('units-val');
+        const planetName = document.getElementById('planet-name');
+        const hpBar = document.getElementById('hp-bar');
+        
+        const btnUnit = document.getElementById('up-unit');
+        const btnDmg = document.getElementById('up-dmg');
+        const btnSize = document.getElementById('up-size');
+        
+        const costUnitEl = document.getElementById('cost-unit');
+        const costDmgEl = document.getElementById('cost-dmg');
+        const costSizeEl = document.getElementById('cost-size');
 
-        const setM = e => { mouse.x = e.touches ? e.touches[0].clientX : e.clientX; mouse.y = e.touches ? e.touches[0].clientY : e.clientY; };
-        window.addEventListener('mousemove', setM);
-        window.addEventListener('touchmove', setM);
+        function updateUI(onlyStats = false) {
+            moneyVal.innerText = Math.floor(money);
+            unitsVal.innerText = units.length;
+            hpBar.style.width = (planetData[pIdx].hp / planetData[pIdx].m * 100) + "%";
+            
+            if (onlyStats) return;
+
+            planetName.innerText = planetData[pIdx].n;
+            costUnitEl.innerText = costUnit;
+            costDmgEl.innerText = costDmg;
+            costSizeEl.innerText = costSize;
+
+            btnUnit.disabled = money < costUnit;
+            btnDmg.disabled = money < costDmg;
+            btnSize.disabled = money < costSize;
+        }
+
+        btnUnit.onclick = () => {
+            if (money >= costUnit) {
+                money -= costUnit;
+                // Спавним 2 новых жнецов
+                units.push(new Unit(), new Unit());
+                costUnit = Math.floor(costUnit * 2.1);
+                updateUI();
+            }
+        };
+
+        btnDmg.onclick = () => {
+            if (money >= costDmg) {
+                money -= costDmg;
+                dmgLvl += 1;
+                costDmg = Math.floor(costDmg * 2.5);
+                updateUI();
+            }
+        };
+
+        btnSize.onclick = () => {
+            if (money >= costSize) {
+                money -= costSize;
+                unitMassLvl += 1;
+                costSize = Math.floor(costSize * 3);
+                updateUI();
+            }
+        };
+
+        // ==========================================
+        // ОБРАБОТЧИКИ СОБЫТИЙ (Керування)
+        // ==========================================
+        const setMouse = (e) => {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            mouse.x = clientX;
+            mouse.y = clientY;
+        };
+
+        window.addEventListener('mousemove', setMouse);
+        window.addEventListener('touchmove', (e) => { setMouse(e); e.preventDefault(); }, { passive: false });
+        
+        const down = (e) => { mouse.down = true; setMouse(e); };
+        const up = () => { mouse.down = false; };
+
+        window.addEventListener('mousedown', down);
+        window.addEventListener('touchstart', down);
+        window.addEventListener('mouseup', up);
+        window.addEventListener('touchend', up);
+
         window.onresize = init;
-        init(); updateUI(); draw();
+
+        // Утиліта для читання CSS змінних
+        function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+        // ЗАПУСК СИСТЕМЫ
+        init();
+        updateUI();
+        draw();
+
     </script>
 </body>
 </html>
